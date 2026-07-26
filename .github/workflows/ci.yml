@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # This runs on other people's production pages. A transitive dependency
+      # is a transitive supply chain, so there are none — and CI says so
+      # rather than trusting a habit.
+      - name: No runtime dependencies
+        run: |
+          deps=$(node -p "Object.keys(require('./package.json').dependencies||{}).length")
+          if [ "$deps" != "0" ]; then echo "runtime dependencies: $deps"; exit 1; fi
+
+      # Dormancy, replaceState-before-exchange, redaction, expiry teardown,
+      # and the origin lock. jsdom, no browser.
+      - name: Tests
+        run: npm test
+
+      # Fails over the 15 KB gzipped budget, and prints the SRI hash that
+      # pins the CDN build.
+      - name: Build, size budget and SRI
+        run: npm run build
+
+      - name: Publish the integrity manifest
+        run: cat dist/INTEGRITY.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: livegate-dist
+          path: dist/
+          if-no-files-found: error
