@@ -99,4 +99,10 @@ legend{padding:0;font-size:14px;margin:0 0 8px}
 .note div{flex:1}
 .note button{flex:none;min-height:44px;min-width:44px;color:#8f96a0;font-size:18px}
 .fine{color:#8f96a0;font-size:12px;line-height:1.5;margin:12px 0 0}
+
+fieldset.inline .opt--inline{display:inline-flex;align-items:center;gap:.4rem;
+min-height:44px;padding:0 .7rem;margin:0 .4rem .4rem 0;border:1px solid var(--hg-rule);
+border-radius:999px}
+fieldset.inline .opt--inline:has(input:checked){border-color:var(--hg-go);
+box-shadow:inset 0 0 0 1px var(--hg-go)}
 `;

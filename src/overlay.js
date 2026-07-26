@@ -75,11 +75,22 @@ function readQuestions(list) {
     const id = "q" + (i + 1);
     if (typeof q === "string") return { id, label: q, type: "text", options: [], required: false };
     const src = q || {};
+    // The server's vocabulary is `qtype` over text|scale|bool|pick with the
+    // labels under `choices`. Reading only `type`/`options` silently degraded
+    // every typed question to a textarea — and a `pick` answered as free text
+    // is DROPPED by the server, because it validates against the declared
+    // choices. Working by accident (scale, bool) was worse than failing.
+    const kind = str(src.qtype) || str(src.type);
+    const type =
+      kind === "pick" || kind === "choice" ? "choice"
+      : kind === "scale" ? "scale"
+      : kind === "bool" ? "bool"
+      : "text";
     return {
       id: str(src.id) || str(src.key) || str(src.name) || id,
       label: str(src.label) || str(src.prompt) || str(src.question) || id,
-      type: str(src.type) === "choice" ? "choice" : "text",
-      options: readOptions(src.options),
+      type,
+      options: readOptions(src.choices && src.choices.length ? src.choices : src.options),
       required: src.required === true,
     };
   });
@@ -373,6 +384,26 @@ export function mount(ctx) {
                   h("span", { class: "name", text: o.label }),
                   o.body ? h("span", { class: "body", text: o.body }) : null,
                 ]),
+              ])
+            );
+          });
+          card.appendChild(group);
+          fields.push({ q, read: () => (card.querySelector("input[name=" + name + "]:checked") || {}).value || "" });
+        } else if (q.type === "scale" || q.type === "bool") {
+          // Radios, not a textarea. The server takes "4" or "yes" as readily as
+          // 4 or true, so the wire shape is the easy half; the point is that a
+          // reviewer must not have to GUESS the accepted words.
+          const values = q.type === "scale"
+            ? ["1", "2", "3", "4", "5"]
+            : ["yes", "no"];
+          const group = h("fieldset", { class: "inline" }, [
+            h("legend", { text: q.label + (q.required ? " *" : "") }),
+          ]);
+          values.forEach((v) => {
+            group.appendChild(
+              h("label", { class: "opt opt--inline" }, [
+                h("input", { type: "radio", name, value: v }),
+                h("span", { class: "name", text: v === "yes" ? "Yes" : v === "no" ? "No" : v }),
               ])
             );
           });
