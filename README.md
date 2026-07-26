@@ -7,7 +7,15 @@ holding a grant.
 
 Zero runtime dependencies. **7.8 KB gzipped.** MIT.
 
-> **Status: in development.** The npm package is not published yet and the
+> **Status: the overlay is written and tested (38 tests, 8 KB gzipped), and is
+> NOT ready for a customer's production page.** It has never been rendered in a
+> real browser — jsdom does not lay out, so the FAB at 390px, the bottom sheet,
+> safe-area insets and iOS focus-zoom are all unverified. There is no focus trap
+> on the composer, `sessionStorage` write failures are silent, and a network
+> outage during the exchange currently shows nothing at all. Nothing is
+> published to npm or a CDN.
+>
+> **Previously:** The npm package is not published yet and the
 > `/api/livegate/*` endpoints are still landing. Ask a human to look at a live
 > URL today with [`hgd-ask`](https://github.com/Brightwing-Systems-LLC/humangated-skills)
 > and the `live_url` artifact kind — the reviewer opens the page and responds in
