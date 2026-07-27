@@ -80,12 +80,18 @@ export function load(siteKey) {
   return s;
 }
 
+/** True when the last `save` could not persist. The reviewer is told once —
+    silently losing their session on the next click is the kind of failure
+    people blame themselves for. */
 export function save(siteKey, s) {
   try {
     window.sessionStorage.setItem(storeKey(siteKey), JSON.stringify(s));
+    return true;
   } catch {
-    /* private mode, quota, a paranoid CSP — the overlay still works, it just
-       will not survive a navigation. Nothing here is worth throwing over. */
+    /* Safari private mode, quota, a paranoid CSP. The overlay works fine right
+       now and will simply not survive a navigation — which is worth saying,
+       because the reviewer is about to click something. */
+    return false;
   }
 }
 
