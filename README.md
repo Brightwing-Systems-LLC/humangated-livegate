@@ -5,9 +5,9 @@ a base template. It is **completely dormant by default** — it wakes for one
 named reviewer, one open ask, a couple of hours, and only because they arrived
 holding a grant.
 
-Zero runtime dependencies. **7.8 KB gzipped.** MIT.
+Zero runtime dependencies. **8 KB gzipped.** MIT.
 
-> **Status: verified in a real browser at 390px, not yet published.** 38 tests,
+> **Status: verified in a real browser at 390px, not yet published.** 41 tests,
 > 8 KB gzipped, zero runtime dependencies. The composer traps and restores
 > focus, a failed exchange and a non-persisting session both say so out loud,
 > and an expired session is re-checked lazily rather than trusted to a timer a
@@ -95,7 +95,7 @@ The one thing you have to add. Say it here rather than letting your team find it
 in a console:
 
 ```
-connect-src https://api.humangated.ai
+connect-src https://humangated.ai
 ```
 
 No `script-src` change is needed for the npm build. The CDN build needs
@@ -115,7 +115,7 @@ and it costs one string read. Otherwise it returns a promise for a handle.
 |---|---|---|
 | `siteKey` | required | Public. Identifies an origin, authorises nothing. Safe in page source. |
 | `release` | recommended | Commit SHA or tag. Every response is pinned to it, so the agent can say "Mike's note was against `abc123f`, you have since shipped `def456a`." |
-| `api` | default `https://api.humangated.ai` | The **only** origin this package will ever contact. |
+| `api` | **required** — no default | The **only** origin this package will ever contact. |
 | `redact` | `[]` | Extra CSS selectors to blank, on top of the site config the server sends. |
 
 ```js
