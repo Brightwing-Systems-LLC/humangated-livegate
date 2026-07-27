@@ -18,6 +18,28 @@ Zero runtime dependencies. **7.8 KB gzipped.** MIT.
 > untested against an SPA router that re-renders on it; no screenshots in v1.
 > Nothing is published to npm or a CDN.
 
+## Installing
+
+The API origin is **required** — there is no default, because a default that
+points at the wrong host fails when a reviewer arrives rather than when you
+install it.
+
+```html
+<script src="https://cdn.humangated.ai/lg/1.0.0/livegate.js"
+        integrity="sha384-…" crossorigin="anonymous"
+        data-hg-site="hg_live_…"
+        data-hg-api="https://humangated.ai"></script>
+```
+
+```js
+import { arm } from "@humangated/livegate";
+arm({ siteKey: "hg_live_…", api: "https://humangated.ai", release: "abc123f" });
+```
+
+Your dashboard renders the exact snippet, with your key and your origin already
+filled in. You will also need `connect-src` for the API origin and `script-src`
+for the CDN in your CSP.
+
 ## What this is not
 
 It is not an always-on feedback widget. That is a different product in a crowded

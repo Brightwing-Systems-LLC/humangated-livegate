@@ -8,7 +8,16 @@
  * checked against it — see transport.js.
  */
 
-export const DEFAULT_API = "https://api.humangated.ai";
+/* There is deliberately NO default API origin.
+   
+   There used to be one — `https://api.humangated.ai`, taken from the wire
+   contract — and that host does not exist. `/api/livegate/*` is served from the
+   application origin. An install that leaned on the default would have looked
+   perfectly fine until the moment a reviewer arrived, and then failed on every
+   request, on a customer's production page, with our name on it.
+   
+   A wrong default fails at review time. A missing one fails at install time,
+   where somebody is already looking. So the origin must be stated. */
 
 function text(v) {
   return typeof v === "string" && v.trim() ? v.trim() : "";
@@ -33,9 +42,11 @@ export function resolve(opts) {
   const siteKey = text(o.siteKey);
   if (!siteKey) return null;
 
+  const given = text(o.api);
+  if (!given) return null;   // stated, or nothing happens — see above
   let api;
   try {
-    api = new URL(text(o.api) || DEFAULT_API);
+    api = new URL(given);
   } catch {
     return null;
   }
