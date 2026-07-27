@@ -97,7 +97,7 @@ function readQuestions(list) {
 }
 
 /**
- * @param {object} ctx {session, cfg, request, onDead}
+ * @param {object} ctx {session, cfg, request, remember, onDead, expired}
  */
 export function mount(ctx) {
   const s = ctx.session;
@@ -209,6 +209,10 @@ export function mount(ctx) {
 
   function onFab() {
     if (!live) return;
+    // A tab can sleep past expires_at with its timer throttled, so the clock is
+    // re-read here rather than trusted. Better to say it now than to let
+    // someone write a paragraph and lose it at submit.
+    if (ctx.expired && ctx.expired()) return ctx.onDead("");
     if (catcher.parentNode) return stopPinning();
     if (scrim.parentNode) return;
     // A free-text review is about a place on the page, so pin first. A typed
@@ -220,7 +224,9 @@ export function mount(ctx) {
 
   /* ── the card ──────────────────────────────────────────────────────── */
 
-  const card = h("div", { class: "card", role: "dialog", "aria-modal": "true" });
+  const card = h("div", {
+    class: "card", role: "dialog", "aria-modal": "true", tabindex: "-1",
+  });
   const scrim = h("div", {
     class: "scrim",
     on: {
@@ -231,12 +237,67 @@ export function mount(ctx) {
     },
   }, [card]);
 
+  /* Focus, kept honest.
+
+     `role="dialog" aria-modal="true"` is a promise to a screen reader that the
+     rest of the page is inert. Without a trap that promise is simply false: tab
+     walks straight out into the customer's nav and the reviewer is lost inside
+     someone else's site with no way back. This is the one surface where we say
+     we care about the person, so it is the last place to ship a lie.
+
+     Deliberately narrow: we trap Tab inside the card and restore focus to
+     whatever the reviewer was on before. We do NOT set `inert` or
+     `aria-hidden` on the host page — that is their DOM, and a review tool that
+     mutates it has stopped being an overlay. */
+  let restoreFocusTo = null;
+
+  function focusables() {
+    return [...card.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    )].filter((el) => !el.disabled && el.getAttribute("aria-hidden") !== "true");
+  }
+
+  function onCardKeydown(e) {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      return closeCard();
+    }
+    if (e.key !== "Tab") return;
+    const f = focusables();
+    if (!f.length) return;
+    const first = f[0];
+    const last = f[f.length - 1];
+    const active = root.activeElement;
+    if (e.shiftKey && (active === first || !card.contains(active))) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && active === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+
   function openCard() {
-    if (!scrim.parentNode) stage.appendChild(scrim);
+    if (scrim.parentNode) return;
+    // Their element, remembered before we take focus away from it.
+    restoreFocusTo = document.activeElement;
+    stage.appendChild(scrim);
+    card.addEventListener("keydown", onCardKeydown);
+    // Let the card paint before focusing, or a screen reader announces an
+    // empty dialog.
+    const f = focusables();
+    (f[0] || card).focus?.();
   }
   function closeCard() {
+    card.removeEventListener("keydown", onCardKeydown);
     scrim.remove();
     card.replaceChildren();
+    // Back where they were. A reviewer who cancels should not have to find
+    // their place in the customer's page again.
+    if (restoreFocusTo && typeof restoreFocusTo.focus === "function") {
+      try { restoreFocusTo.focus(); } catch { /* element left the DOM */ }
+    }
+    restoreFocusTo = null;
   }
 
   /* The ask travels with the artifact — a reviewer must be able to see the
@@ -471,6 +532,7 @@ export function mount(ctx) {
 
     let res;
     try {
+      if (ctx.expired && ctx.expired()) return ctx.onDead("");
       res = await ctx.request("/api/livegate/responses", { token: s.session, body: payload });
     } catch {
       return fail(send, err, "Couldn’t reach HumanGated. Your note is still here — try Send again.");

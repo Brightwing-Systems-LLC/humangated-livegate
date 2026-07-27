@@ -44,6 +44,9 @@ function begin(cfg, session) {
     request,
     remember: (s) => store.save(cfg.siteKey, s),
     onDead: (msg) => end(msg),
+    // Truthy the moment the clock has run out, however long the tab was
+    // asleep. The overlay asks before it opens and before it sends.
+    expired: () => store.msLeft(session) <= 0,
   });
 
   /* At expires_at the overlay tears itself down and says so. It does not
@@ -57,6 +60,17 @@ function begin(cfg, session) {
     state.ui.expired(msg || "");
     if (armed === state) armed = null;
   }
+
+  /* A backgrounded tab cannot be trusted to fire its timer on time — browsers
+     throttle them hard and Safari can suspend them outright, so the overlay can
+     still look live on a dead session.
+
+     The obvious fix is a `visibilitychange` listener, and it is the wrong one:
+     this package promises not one listener on the customer's document outside
+     pin mode, and that promise is worth more than the convenience. So the
+     overlay re-checks the clock LAZILY instead — before it opens the composer
+     and again before it sends — via `expired()` below. That covers the harm
+     exactly, because the harm is writing a note and losing it at submit. */
   state.handle = {
     active: true,
     reviewer: session.reviewer,
@@ -84,6 +98,14 @@ async function wake(cfg, token) {
       body: { handoff: token, site_key: cfg.siteKey, release: cfg.release },
     });
   } catch {
+    // No response at all — offline, DNS, a CSP that blocks connect-src. This
+    // used to show nothing whatsoever, which reads as "the link is broken" and
+    // sends the reviewer away. Naming it is the difference between a retry and
+    // a lost review.
+    notice(
+      "Couldn't reach HumanGated to open your review. Check your connection " +
+      "and reload this page — your link is still good."
+    );
     return null;
   }
   if (!res.ok) {
@@ -101,8 +123,15 @@ async function wake(cfg, token) {
   }
   const session = store.adopt(body, cfg);
   if (!session) return null;
-  store.save(cfg.siteKey, session);
-  return begin(cfg, session);
+  const persisted = store.save(cfg.siteKey, session);
+  const gate = begin(cfg, session);
+  if (!persisted) {
+    notice(
+      "Your review is open, but this browser won't remember it if you " +
+      "navigate away — finish on this page, or reopen the link from your inbox."
+    );
+  }
+  return gate;
 }
 
 /** A dead-link message, in its own throwaway shadow root. */

@@ -105,4 +105,10 @@ min-height:44px;padding:0 .7rem;margin:0 .4rem .4rem 0;border:1px solid var(--hg
 border-radius:999px}
 fieldset.inline .opt--inline:has(input:checked){border-color:var(--hg-go);
 box-shadow:inset 0 0 0 1px var(--hg-go)}
+
+/* The FAB's only job is to open the card, so it has no business being visible
+   once the card is open. Seen in Chrome at 390px: it peeked out from behind the
+   sheet at the right edge, half-clipped by the viewport — the kind of thing
+   jsdom cannot show you because jsdom does not lay out. */
+.r:has(.scrim) .fab{opacity:0;pointer-events:none}
 `;
